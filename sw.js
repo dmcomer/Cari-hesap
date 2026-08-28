@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cari-hesap-v4';
+const CACHE_NAME = 'cari-hesap-v5';
 const FILES_TO_CACHE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
