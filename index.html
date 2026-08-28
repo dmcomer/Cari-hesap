@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cari Hesap</title>
+<title>Notlarım</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Cari Hesap">
+<meta name="apple-mobile-web-app-title" content="Notlarım">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -96,7 +96,7 @@ h1,h2,h3{ font-family:'Space Grotesk',system-ui,sans-serif; margin:0; }
 }
 .gear-btn:active{ background:#1C1D1F; }
 .total-box{ text-align:right; margin-left:auto; margin-right:12px; }
-.total-box .total-label{ font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:#7C7F83; }
+.total-box .total-label{ font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:var(--green); }
 .total-box .total-val{ font-weight:700; font-size:16px; margin-top:2px; }
 .total-box .total-datetime{ font-size:13px; font-weight:700; color:var(--silver); margin-top:4px; font-family:'JetBrains Mono',monospace; letter-spacing:0.02em; }
 
@@ -1410,6 +1410,7 @@ function openSettings(){
           <button class="btn btn-ghost" onclick="closeModal()">Vazgeç</button>
           <button class="btn btn-primary" onclick="saveKdvSetting()">Kaydet</button>
         </div>
+        <div style="text-align:center;font-size:10px;color:var(--ink-soft);margin-top:12px;">sürüm 2</div>
       </div>
     </div>`;
 }
