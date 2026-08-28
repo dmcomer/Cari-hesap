@@ -389,7 +389,7 @@ function render(){
   if(tv){
     const ta = totalAlacakGenel();
     tv.textContent = tl(ta);
-    tv.style.color = ta > 0.004 ? '#FF9E85' : '#8FE0B0';
+    tv.style.color = '#8FE0B0';
   }
   const app = document.getElementById('app');
   if(state.tab === 'satis') app.innerHTML = renderSatis();
@@ -1410,7 +1410,7 @@ function openSettings(){
           <button class="btn btn-ghost" onclick="closeModal()">Vazgeç</button>
           <button class="btn btn-primary" onclick="saveKdvSetting()">Kaydet</button>
         </div>
-        <div style="text-align:center;font-size:10px;color:var(--ink-soft);margin-top:12px;">sürüm 3</div>
+        <div style="text-align:center;font-size:10px;color:var(--ink-soft);margin-top:12px;">sürüm 4</div>
       </div>
     </div>`;
 }
