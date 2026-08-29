@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notlarım</title>
+<title>Defter</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Notlarım">
+<meta name="apple-mobile-web-app-title" content="Defter">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -348,6 +348,7 @@ function loadAll(){
     if(v) state.gg = {...state.gg, ...JSON.parse(v)};
   }catch(e){}
   render();
+  checkWeeklyBackupReminder();
 }
 
 function saveSettings(){
@@ -1393,6 +1394,126 @@ function printGGMonth(monthKey){
 }
 
 /* ================= SETTINGS MODAL ================= */
+/* ================= HAFTALIK YEDEK HATIRLATMASI ================= */
+function mondayOfWeek(d){
+  const dt = new Date(d);
+  const day = dt.getDay(); // 0=Pazar, 1=Pazartesi...
+  const diff = day === 0 ? -6 : (1 - day);
+  dt.setDate(dt.getDate() + diff);
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+function checkWeeklyBackupReminder(){
+  const now = new Date();
+  if(now.getDay() !== 1) return; // sadece Pazartesi
+  const thisMonday = mondayOfWeek(now);
+  const lastShown = localStorage.getItem('yedekHatirlatmaHaftasi');
+  if(lastShown === thisMonday) return;
+  showBackupReminder(thisMonday);
+}
+function markBackupReminderSeen(weekKey){
+  try{ localStorage.setItem('yedekHatirlatmaHaftasi', weekKey); }catch(e){}
+}
+function showBackupReminder(weekKey){
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal" style="text-align:center;">
+        <div style="font-size:38px;margin-bottom:6px;">📅</div>
+        <h3 style="font-size:19px;margin-bottom:8px;">Haftalık Yedek Alma Zamanı!</h3>
+        <p style="font-size:13.5px;color:var(--ink-soft);margin:0 0 16px;">
+          Tüm cari, malzemeci ve gelir-gider verilerinin tek bir PDF yedeğini almanı öneririz.
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="markBackupReminderSeen('${weekKey}'); closeModal();">Daha Sonra</button>
+          <button class="btn btn-primary" onclick="markBackupReminderSeen('${weekKey}'); closeModal(); printFullBackup();">📦 Şimdi Yedek Al</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function printFullBackup(){
+  const isletme = state.settings.isletmeAdi || '';
+  const withInfo = state.cari.customers.map(cu=>({ cu, info: custDebtInfo(cu.id) }));
+  withInfo.sort((a,b)=> b.info.kalan - a.info.kalan);
+  const toplamIs = withInfo.reduce((s,w)=>s+w.info.toplamIs,0);
+  const toplamOdenen = withInfo.reduce((s,w)=>s+w.info.toplamOdenen,0);
+  const toplamKalan = toplamIs - toplamOdenen;
+
+  const allTxns = state.cari.transactions.slice().sort((a,b)=> b.date.localeCompare(a.date));
+  const allPays = state.cari.payments.slice().sort((a,b)=> b.date.localeCompare(a.date));
+  const custName = id => { const c = state.cari.customers.find(x=>x.id===id); return c?c.name:'—'; };
+
+  let html = `
+    <div class="p-headline">
+      <div>
+        <div class="p-brand">Haftalık Tam Yedek</div>
+        <div class="p-doctype">Tüm Veriler — Cari / Malzemeci / Gelir-Gider</div>
+      </div>
+      <div class="p-meta">
+        ${isletme? `<div><strong>İşletme:</strong> ${escapeHtml(isletme)}</div>` : ''}
+        <div>Rapor Tarihi: ${fmtDate(todayStr())}</div>
+      </div>
+    </div>
+
+    <h2>Firma Borç Özeti</h2>
+    <table><thead><tr><th>Firma</th><th class="r">Toplam İş</th><th class="r">Ödenen</th><th class="r">Kalan Borç</th></tr></thead><tbody>`;
+  withInfo.forEach(w=>{
+    html += `<tr><td>${escapeHtml(w.cu.name)}</td><td class="r">${tl(w.info.toplamIs)}</td><td class="r">${tl(w.info.toplamOdenen)}</td><td class="r"><strong>${tl(w.info.kalan)}</strong></td></tr>`;
+  });
+  html += `</tbody></table>
+    <div class="p-summary">
+      <div><span>Toplam İş Tutarı</span><span>${tl(toplamIs)}</span></div>
+      <div><span>Toplam Ödenen</span><span>${tl(toplamOdenen)}</span></div>
+      <div class="final"><span>Toplam Kalan Borç</span><span>${tl(toplamKalan)}</span></div>
+    </div>
+
+    <h2>Tüm İş Kayıtları</h2>
+    <table><thead><tr><th>Tarih</th><th>Firma</th><th>Yapılan İş</th><th class="r">Tutar</th></tr></thead><tbody>`;
+  if(allTxns.length){
+    allTxns.forEach(t=>{
+      html += `<tr><td>${fmtDate(t.date)}</td><td>${escapeHtml(custName(t.customerId))}</td><td>${escapeHtml(t.desc)}</td><td class="r">${tl(txnTotal(t))}</td></tr>`;
+    });
+  } else { html += `<tr><td colspan="4" style="text-align:center;color:#999;">Kayıt yok</td></tr>`; }
+  html += `</tbody></table>
+
+    <h2>Tüm Ödemeler</h2>
+    <table><thead><tr><th>Tarih</th><th>Firma</th><th>Açıklama</th><th class="r">Tutar</th></tr></thead><tbody>`;
+  if(allPays.length){
+    allPays.forEach(p=>{
+      html += `<tr><td>${fmtDate(p.date)}</td><td>${escapeHtml(custName(p.customerId))}</td><td>${escapeHtml(p.desc||'Ödeme')}</td><td class="r">${tl(p.amount)}</td></tr>`;
+    });
+  } else { html += `<tr><td colspan="4" style="text-align:center;color:#999;">Kayıt yok</td></tr>`; }
+  html += `</tbody></table>
+
+    <h2>Malzemeciler — Fiş Listesi</h2>
+    <table><thead><tr><th>Tarih</th><th>Malzemeci</th><th>Açıklama</th><th class="r">Tutar</th></tr></thead><tbody>`;
+  const allReceipts = state.ted.receipts.slice().sort((a,b)=> b.date.localeCompare(a.date));
+  const supName = id => { const s = state.ted.suppliers.find(x=>x.id===id); return s?s.name:'—'; };
+  if(allReceipts.length){
+    allReceipts.forEach(r=>{
+      html += `<tr><td>${fmtDate(r.date)}</td><td>${escapeHtml(supName(r.supplierId))}</td><td>${escapeHtml(r.desc||'Fiş')}</td><td class="r">${tl(receiptTotal(r))}</td></tr>`;
+    });
+  } else { html += `<tr><td colspan="4" style="text-align:center;color:#999;">Kayıt yok</td></tr>`; }
+  html += `</tbody></table>
+
+    <h2>Gelir-Gider Kayıtları</h2>
+    <table><thead><tr><th>Tarih</th><th>Tür</th><th>Açıklama</th><th class="r">Tutar</th></tr></thead><tbody>`;
+  const allGG = state.gg.entries.slice().sort((a,b)=> b.date.localeCompare(a.date));
+  if(allGG.length){
+    allGG.forEach(e=>{
+      html += `<tr><td>${fmtDate(e.date)}</td><td>${e.type==='gelir'?'Gelir':'Gider'}</td><td>${escapeHtml(e.desc||'-')}</td><td class="r">${e.type==='gelir'?'+':'-'}${tl(e.amount)}</td></tr>`;
+    });
+  } else { html += `<tr><td colspan="4" style="text-align:center;color:#999;">Kayıt yok</td></tr>`; }
+  html += `</tbody></table>
+    <div class="p-footer">${isletme? escapeHtml(isletme)+' · ' : ''}Haftalık Yedek · ${fmtDate(todayStr())}</div>
+  `;
+
+  document.getElementById('printArea').innerHTML = html;
+  const oldTitle = document.title;
+  document.title = 'Haftalik Yedek ' + todayStr();
+  window.print();
+  document.title = oldTitle;
+}
+
 function openSettings(){
   document.getElementById('modalRoot').innerHTML = `
     <div class="modal-backdrop" onclick="if(event.target===this) closeModal()">
@@ -1410,7 +1531,8 @@ function openSettings(){
           <button class="btn btn-ghost" onclick="closeModal()">Vazgeç</button>
           <button class="btn btn-primary" onclick="saveKdvSetting()">Kaydet</button>
         </div>
-        <div style="text-align:center;font-size:10px;color:var(--ink-soft);margin-top:12px;">sürüm 6</div>
+        <button class="btn btn-secondary btn-block" style="margin-top:10px;" onclick="closeModal(); printFullBackup();">📦 Tüm Verileri Yedekle (PDF)</button>
+        <div style="text-align:center;font-size:10px;color:var(--ink-soft);margin-top:12px;">sürüm 7</div>
       </div>
     </div>`;
 }

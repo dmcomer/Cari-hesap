@@ -1,6 +1,6 @@
 {
-  "name": "Cari Hesap - Ömer DMC Makina",
-  "short_name": "Cari Hesap",
+  "name": "Defter",
+  "short_name": "Defter",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
